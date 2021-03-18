@@ -31,10 +31,40 @@ var app = express();
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
-app.use(logger('dev'));
-app.use(express.json());
+// Middleware functions are applied in the order they appear
+app.use(logger('dev')); // Morgan middleware looks at request header and logs it to console
+app.use(express.json());  // Then it passes req and res objs to this middleware which parses the req body
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+
+// Authenticate users before they can access resources on server
+function auth(req, res, next) {
+  console.log(req.headers);
+  const authHeader = req.headers.authorization;
+  if(!authHeader) { // user has not input any credentials
+    const err = new Error('You are not authenticated!');
+    res.setHeader('WWW-Authenticate', 'Basic'); // Tells client server is requesting basic authorization
+    err.status = 401;
+    return next(err);
+  }
+
+  // 'Basic' in header contains username and password in a 64-based encoded string. Let's decode it.
+  const auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':');
+  const user = auth[0];
+  const pass = auth[1];
+  if (user === 'admin' && pass === 'password') {
+    return next(); // authorized. move on to next middleware func
+  } else {
+    const err = new Error('You are not authenticated!');
+    res.setHeader('WWW-Authenticate', 'Basic');
+    err.status = 401;
+    return next(err);
+  }
+}
+
+app.use(auth);
+
+// This is first middleware func that starts sending something back to client. Authenticate request before this line.
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
