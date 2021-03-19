@@ -3,6 +3,8 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');  
 var logger = require('morgan');
+const session = require('express-session');
+const FileStore = require('session-file-store')(session); // IIFE
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -35,11 +37,23 @@ app.set('view engine', 'jade');
 app.use(logger('dev')); // Morgan middleware looks at request header and logs it to console
 app.use(express.json());  // Then it passes req and res objs to this middleware which parses the req body
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser('12345-67890-09876-54321')); // can be any string. this key will be used by cookieParser to encrypt info and sign the cookie
+
+// Don't use cookie parser if you're using sessions (sessions)
+// app.use(cookieParser('12345-67890-09876-54321')); 
+app.use(session({
+  name: 'session-id',
+  secret: '12345-67890-09876-54321',
+  saveUninitialized: false, // don't save new session if there were no updates to session
+  resave: false,  // keep saving after request to session even if there are no updates so that session stays active doesn't get deleted after user stops making requests
+  store: new FileStore() // save to server's hard disk
+}));
 
 // Authenticate users before they can access resources on server
 function auth(req, res, next) {
-  if (!req.signedCookies.user) {
+  console.log(req.session);
+
+  // if (!req.cookieParser.user) {
+  if (!req.session.user) {
 
     const authHeader = req.headers.authorization;
     if(!authHeader) { // user has not input any credentials
@@ -54,8 +68,9 @@ function auth(req, res, next) {
     const user = auth[0];
     const pass = auth[1];
     if (user === 'admin' && pass === 'password') {
-      res.cookie('user', 'admin', {signed: true});  // creates a new cookie with a name of 'user', a value of 'admin' 
+      // res.cookie('user', 'admin', {signed: true});  // creates a new cookie with a name of 'user', a value of 'admin' 
                                                     // to store in the name property, and an optional config property with tells Express to use the secret key from cookieParser to create a signed cookie
+      req.session.user = 'admin';
       return next(); // authorized. move on to next middleware func
     } else {
       const err = new Error('You are not authenticated!');
@@ -64,7 +79,8 @@ function auth(req, res, next) {
       return next(err);
     }
   } else {
-    if (req.signedCookies.user === 'admin') {
+    // if (req.signedCookies.user === 'admin') {
+    if (req.session.user === 'admin') {
         return next();
     } else {
         const err = new Error('You are not authenticated!');
