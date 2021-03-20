@@ -14,14 +14,25 @@ router.post('/signup', (req, res, next) => {  // this endpoint allows a new user
   User.register(
     new User({username: req.body.username}),
     req.body.password,
-    err => {
+    (err, user) => {
         if (err) {
-            res.statusCode = 500; // Internal server err
-            res.json({err: err});
+            res.status(500).json({err: err}); // 500 = Internal server err
         } else {
+          if (req.body.firstname) {
+              user.firstname = req.body.firstname;
+          }
+          if (req.body.lastname) {
+              user.lastname = req.body.lastname;
+          }
+          user.save(err => {
+            if (err) {
+                res.status(500).json({err: err});
+                return;
+            }
             passport.authenticate('local')(req, res, () => {
                 res.json({success: true, status: 'Registration Successful!'});
             });
+          });
         }
     }
   );

@@ -7,6 +7,8 @@ const campsiteRouter = express.Router();
 campsiteRouter.route('/')
 .get((req, res, next) => {
     Campsite.find()
+    .populate('comments.author')    // when the campsites docs are retrieved, poulate the author field of the 
+                                    // comments subdocument by finding the user document that matches the obj id that's stored there
     .then(campsites => {
         res.json(campsites);
     })
@@ -35,6 +37,7 @@ campsiteRouter.route('/')
 campsiteRouter.route('/:campsiteId')
 .get((req, res, next) => {
     Campsite.findById(req.params.campsiteId)
+    .populate('comments.author')
     .then(campsite => {
         res.json(campsite);
     })
@@ -63,6 +66,7 @@ campsiteRouter.route('/:campsiteId')
 campsiteRouter.route('/:campsiteId/comments')
 .get((req, res, next) => {
     Campsite.findById(req.params.campsiteId)
+    .populate('comments.author')
     .then(campsite => {
         if (campsite) {
             res.json(campsite.comments);
@@ -78,6 +82,7 @@ campsiteRouter.route('/:campsiteId/comments')
     Campsite.findById(req.params.campsiteId)
     .then(campsite => {
         if (campsite) {
+            req.body.author = req.user._id; // save user._id to author field before comment in body gets pushed to array
             campsite.comments.push(req.body);
             campsite.save()
             .then(campsite => {
@@ -119,6 +124,7 @@ campsiteRouter.route('/:campsiteId/comments')
 campsiteRouter.route('/:campsiteId/comments/:commentId')
 .get((req, res, next) => {
     Campsite.findById(req.params.campsiteId)
+    .populate('comments.author')
     .then(campsite => {
         if (campsite && campsite.comments.id(req.params.commentId)) {
             res.json(campsite.comments.id(req.params.commentId));
