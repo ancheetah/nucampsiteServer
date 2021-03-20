@@ -2,10 +2,8 @@ var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
 var logger = require('morgan');
-const session = require('express-session');
-const FileStore = require('session-file-store')(session); // IIFE
 const passport = require('passport');
-const authenticate = require('./authenticate');
+const config = require('./config');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -16,7 +14,8 @@ const partnerRouter = require('./routes/partnerRouter');
 
 const mongoose = require('mongoose');
 
-const url = 'mongodb://localhost:27017/nucampsite';
+// const url = 'mongodb://localhost:27017/nucampsite';
+const url = config.mongoUrl;
 const connect = mongoose.connect(url, {
     useCreateIndex: true,
     useFindAndModify: false,
@@ -39,38 +38,11 @@ app.use(logger('dev')); // Morgan middleware looks at request header and logs it
 app.use(express.json());  // Then it passes req and res objs to this middleware which parses the req body
 app.use(express.urlencoded({ extended: false }));
 
-// Don't use cookie parser if you're using sessions
-app.use(session({
-  name: 'session-id',
-  secret: '12345-67890-09876-54321',
-  saveUninitialized: false, // don't save new session if there were no updates to session
-  resave: false,  // keep saving after request to session even if there are no updates so that session stays active doesn't get deleted after user stops making requests
-  store: new FileStore() // save to server's hard disk
-}));
-
-// Only use the following passport functions if using sessions
-// Checks for existing session for client and loads session into request as req.user
 app.use(passport.initialize());
-app.use(passport.session());
 
 // The following routers are moved here above the auth function so that clients can access them without logging in first
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
-
-// Authenticate users before they can access resources on server
-function auth(req, res, next) {
-  console.log(req.user);
-
-  if (!req.user) {
-      const err = new Error('You are not authenticated!');
-      err.status = 401;
-      return next(err);
-  } else {
-      return next();
-  }
-}
-
-app.use(auth);
 
 // This is first middleware func that starts sending something back to client. Authenticate request before this line.
 app.use(express.static(path.join(__dirname, 'public')));
