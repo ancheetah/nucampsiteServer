@@ -1,10 +1,11 @@
 var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
-var cookieParser = require('cookie-parser');  
 var logger = require('morgan');
 const session = require('express-session');
 const FileStore = require('session-file-store')(session); // IIFE
+const passport = require('passport');
+const authenticate = require('./authenticate');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -47,26 +48,25 @@ app.use(session({
   store: new FileStore() // save to server's hard disk
 }));
 
+// Only use the following passport functions if using sessions
+// Checks for existing session for client and loads session into request as req.user
+app.use(passport.initialize());
+app.use(passport.session());
+
 // The following routers are moved here above the auth function so that clients can access them without logging in first
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 
 // Authenticate users before they can access resources on server
 function auth(req, res, next) {
-  console.log(req.session);
+  console.log(req.user);
 
-  if (!req.session.user) {
+  if (!req.user) {
       const err = new Error('You are not authenticated!');
       err.status = 401;
       return next(err);
   } else {
-      if (req.session.user === 'authenticated') {
-          return next();
-      } else {
-          const err = new Error('You are not authenticated!');
-          err.status = 401;
-          return next(err);
-      }
+      return next();
   }
 }
 
