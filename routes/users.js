@@ -5,14 +5,13 @@ const authenticate = require('../authenticate');
 
 const router = express.Router();
 
-/* GET users listing. */
+/* List all users for admins only */
 router.get('/', authenticate.verifyUser, authenticate.verifyAdmin, function(req, res, next) {
   User.find()
   .then(users => {
     res.json(users);
   })
   .catch(err => next(err));
-  // res.send('respond with a resource');
 });
 
 router.post('/signup', (req, res, next) => {  // this endpoint allows a new user to register
@@ -45,19 +44,7 @@ router.post('/signup', (req, res, next) => {  // this endpoint allows a new user
 
 router.post('/login', passport.authenticate('local'), (req, res) => {
   const token = authenticate.getToken({_id: req.user._id});
-  res.json({success: true, token: token, status: 'You are successfully logged in!'});
-});
-
-router.get('/logout', (req, res, next) => { // use GET because client is not sending any info to server
-  if (req.session) {
-      req.session.destroy();
-      res.clearCookie('session-id');
-      res.redirect('/');
-  } else {
-      const err = new Error('You are not logged in!');
-      err.status = 401;
-      return next(err);
-  }
+  res.json({success: true, token: token, status: `You are successfully logged in as ${req.user.username}!`});
 });
 
 module.exports = router;

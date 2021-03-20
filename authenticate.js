@@ -42,7 +42,7 @@ exports.jwtPassport = passport.use(
 // Verify that an incoming request is from an authenticated user
 exports.verifyUser = passport.authenticate('jwt', {session: false});
 
-// Verify admin
+// Verify that user is an admin
 exports.verifyAdmin = (req, res, next) => {
     console.log(req.user);
     if (req.user.admin) {
