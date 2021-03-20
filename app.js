@@ -38,8 +38,7 @@ app.use(logger('dev')); // Morgan middleware looks at request header and logs it
 app.use(express.json());  // Then it passes req and res objs to this middleware which parses the req body
 app.use(express.urlencoded({ extended: false }));
 
-// Don't use cookie parser if you're using sessions (sessions)
-// app.use(cookieParser('12345-67890-09876-54321')); 
+// Don't use cookie parser if you're using sessions
 app.use(session({
   name: 'session-id',
   secret: '12345-67890-09876-54321',
@@ -48,45 +47,26 @@ app.use(session({
   store: new FileStore() // save to server's hard disk
 }));
 
+// The following routers are moved here above the auth function so that clients can access them without logging in first
+app.use('/', indexRouter);
+app.use('/users', usersRouter);
+
 // Authenticate users before they can access resources on server
 function auth(req, res, next) {
   console.log(req.session);
 
-  // if (!req.cookieParser.user) {
   if (!req.session.user) {
-
-    const authHeader = req.headers.authorization;
-    if(!authHeader) { // user has not input any credentials
       const err = new Error('You are not authenticated!');
-      res.setHeader('WWW-Authenticate', 'Basic'); // Chalenge the client for credentials. Tells client server is requesting basic authorization
       err.status = 401;
       return next(err);
-    }
-
-    // 'Basic' in header contains username and password in a 64-based encoded string. Let's decode it.
-    const auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':');
-    const user = auth[0];
-    const pass = auth[1];
-    if (user === 'admin' && pass === 'password') {
-      // res.cookie('user', 'admin', {signed: true});  // creates a new cookie with a name of 'user', a value of 'admin' 
-                                                    // to store in the name property, and an optional config property with tells Express to use the secret key from cookieParser to create a signed cookie
-      req.session.user = 'admin';
-      return next(); // authorized. move on to next middleware func
-    } else {
-      const err = new Error('You are not authenticated!');
-      res.setHeader('WWW-Authenticate', 'Basic');
-      err.status = 401;
-      return next(err);
-    }
   } else {
-    // if (req.signedCookies.user === 'admin') {
-    if (req.session.user === 'admin') {
-        return next();
-    } else {
-        const err = new Error('You are not authenticated!');
-        err.status = 401;
-        return next(err);
-    } 
+      if (req.session.user === 'authenticated') {
+          return next();
+      } else {
+          const err = new Error('You are not authenticated!');
+          err.status = 401;
+          return next(err);
+      }
   }
 }
 
@@ -94,9 +74,6 @@ app.use(auth);
 
 // This is first middleware func that starts sending something back to client. Authenticate request before this line.
 app.use(express.static(path.join(__dirname, 'public')));
-
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
 
 app.use('/campsites', campsiteRouter);
 app.use('/promotions', promotionRouter);
