@@ -2,6 +2,7 @@ const express = require('express');
 const authenticate = require('../authenticate');
 const cors = require('./cors');
 const Favorite = require('../models/favorite');
+const favorite = require('../models/favorite');
 
 const favoriteRouter = express.Router();
 
@@ -51,7 +52,6 @@ favoriteRouter.route('/')
     Favorite.findOneAndDelete({ user: req.user._id })
     .then( favorite => {
         if (favorite) {
-            console.log('Deleted favorite', favorite)
             res.json(favorite);
         } else {
             res.end('You do not have any favorites to delete.');
@@ -64,10 +64,34 @@ favoriteRouter.route('/')
 favoriteRouter.route('/:campsiteId')
 .options(cors.corsWithOptions, (req, res) => res.sendStatus(200))
 .get((req, res, next) => {
-    res.status(403).end('GET operation not supported on /favorites');
+    res.status(403).end(`GET operation not supported on /favorites/${req.params.campsiteId}`);
 })
 .post(cors.corsWithOptions, authenticate.verifyUser, (req, res) => {
-    // res.status(403).end(`POST operation not supported on /partners/${req.params.partnerId}`);
+    Favorite.findOne({ user: req.user._id })
+    .then(favorite => {
+        if (favorite) {
+            if (favorite.campsites.includes(req.params.campsiteId)) {
+                res.end('That campsite is already in the list of favorites!');
+            } else {
+                favorite.campsites.push(req.params.campsiteId);
+                favorite.save()
+                .then(favorite => {
+                    res.json(favorite);
+                })
+                .catch(err => next(err));
+            }
+        } else {
+            Favorite.create({
+                user: req.user.id,
+                campsites: req.params.campsiteId
+            })
+            .then(favorite => {
+                console.log('Favorite Created ', favorite);
+                res.json(favorite);
+            })
+            .catch(err => next(err));
+        }
+    })
 })
 .put(cors.corsWithOptions, authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
     res.status(403).end(`PUT operation not supported on /favorites/${req.params.campsiteId}`);
