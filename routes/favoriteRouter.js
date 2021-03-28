@@ -97,11 +97,19 @@ favoriteRouter.route('/:campsiteId')
     res.status(403).end(`PUT operation not supported on /favorites/${req.params.campsiteId}`);
 })
 .delete(cors.corsWithOptions, authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
-    // Partner.findByIdAndDelete(req.params.partnerId)
-    // .then(response => {
-    //     res.json(response);
-    // })
-    // .catch(err => next(err));
+    Favorite.findOne({ user: req.user._id })
+    .then( favorite => {
+        if (favorite) {
+            favorite.campsites = favorite.campsites.filter( campsiteId => campsiteId.toString() !== req.params.campsiteId );
+            favorite.save()
+            .then(favorite => {
+                res.json(favorite);
+            })
+            .catch(err => next(err));
+        } else {
+            res.end('There are no favorites to delete.')
+        }
+    })
 });
 
 module.exports = favoriteRouter;
